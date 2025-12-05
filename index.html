@@ -1,0 +1,398 @@
+<html>
+<head>
+   <link rel="stylesheet" href="styles.css">
+   <link rel="icon" type="image/x-icon" href="favicon.png">
+</head>
+<body>
+
+  <div class='buttons'>
+     <div class='grid-item' id='mute' data-target='tv'><img src='mute.svg' /></div>  
+     <input id="volume-slider" type="range" min="0" max="100" value="0" />
+     <div class='grid-item' id='power' data-target='none'><img src='power.svg' /></div>
+
+     <div class='grid-item' data-target='actualsource' data-kodikey='escape'><img id='home' src='home.svg' /></div>
+     <div class='grid-item'></div>
+     <div class='grid-item' id='up' data-target='actualsource'><img src='up.svg' /></div>
+     <div class='grid-item'></div>
+     <div class='grid-item' id='menu' data-target='actualsource'><img src='menu.svg' /></div>  
+
+     <div class='grid-item'></div>
+     <div class='grid-item' id='left' data-target='actualsource'><img src='left.svg' /></div>
+     <div class='grid-item' id='enter' data-target='actualsource'><img src='enter.svg' /></div>
+     <div class='grid-item' id='right' data-target='actualsource'><img src='right.svg' /></div>  
+     <div class='grid-item'></div>
+
+     <div class='grid-item' id='back' data-target='actualsource' data-kodikey='backspace'><img src='back.svg' /></div>
+     <div class='grid-item'><div id='stop'  data-target='kodi' data-kodikey='x'><img src='stop.svg' /></div></div>
+     <div class='grid-item' id='down' data-target='actualsource'><img src='down.svg' /></div>
+     <div class='grid-item'><div id='play' data-target='kodi' data-kodikey='space'><img src='play.svg' /></div><div id='pause' data-target='kodi' data-kodikey='space'><img src='pause.svg' /></div></div>
+     <div class='grid-item'></div>
+  </div>
+
+  <div class='channels' id='channels'>
+     <div class='channel' id='kodi'>
+        <img class='channel-icon' src='https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Kodi-logo-Thumbnail-light-transparent.png/600px-Kodi-logo-Thumbnail-light-transparent.png' alt='Kodi' />
+        <div class='epg'>
+           <div class='epg-title'>&nbsp;</div>
+           <div class='epg-desc'>&nbsp;</div>
+        </div>
+     </div>
+  </div>
+  
+  <dialog id='koditextinput'>
+     <div>Eingabe f&uuml;r Kodi</div>
+     <input type="text" id="kodi-input" name="kodi-input"><br/>
+     <button type="button" id="kodi-input-send">Senden</button>
+  </dialog>
+  
+  <dialog id='epgdetail'>
+     <div></div>
+     <button id='nextEpg'>&gt;</button>
+     <button id='prevEpg'>&lt;</button>
+  </dialog>
+
+  <script src='wsproxy.js'></script>
+  <script src='client.js'></script>
+  <script src='tv.js'></script>
+  <script src='tvh.js'></script>
+  <script src='kodi.js'></script>
+  <script>
+  
+    ['stop', 'play', 'pause'].forEach(id => document.getElementById(id).style.display = 'none');
+
+    async function load(route) {
+       var response = await fetch(route);
+       return await response.text();
+    }    
+    
+    document.querySelectorAll('img').forEach(async e => {
+		if (e.src.endsWith('.svg')) {
+		   e.parentElement.innerHTML = await load(e.src);
+	    }
+    });
+    
+    document.querySelectorAll('[data-target="kodi"]').forEach(e => {
+       e.addEventListener('click', async () => {
+          var key = e.dataset.kodikey ? e.dataset.kodikey : e.id;
+          await kodi.sendKey(key);
+          updateKodiState();
+       });
+    });
+    
+    document.getElementById('volume-slider').oninput = async (event) => {
+       var value = event.srcElement.valueAsNumber;
+       await tv?.setVolume(value);
+    };
+
+    // tv remote supports this: HOME, BACK, ENTER, INFO, LEFT, RIGHT, UP, DOWN, RED, GREEN, YELLOW, BLUE, 0, 1, .., MUTE, VOLUMEUP, VOLUMEDOWN, CHANNELUP, CHANNELDOWN
+    document.querySelectorAll('[data-target="tv"]').forEach(e => {
+       var id = e.id;
+       e.addEventListener('click', async () => {
+          tv?.clickButton(id.toUpperCase());
+       });
+    });
+
+    document.querySelectorAll('[data-target="actualsource"]').forEach(e => {
+       e.addEventListener('click', async () => {
+          var id = e.id;
+          var input = await tv.getInput();
+          if (input == 'tv') {
+             tv?.clickButton(id.toUpperCase());
+          } else if (input == 'hdmi1') { // assume kodi is running on hdmi 1
+             var key = e.dataset.kodikey ? e.dataset.kodikey : id;
+             await kodi.sendKey(key);
+          }
+       });
+    });
+
+    function getChannelIcon(channelId) {
+      return `https://raw.githubusercontent.com/MarhyCZ/picons/master/640/${channelId}.png`;
+    }
+
+    function showBroadcast(broadcast) {
+        var dialog = document.getElementById('epgdetail');
+        var channel = getChannel(broadcast.channel)
+        dialog.firstElementChild.innerHTML = `
+           <img class='channel-icon' src='${getChannelIcon(channel.id)}' alt="${channel.name}">
+           <div class='epg-title'>
+               ${formatTime(broadcast?.start)} - ${formatTime(broadcast?.stop)} ${sanitize(broadcast?.title)}
+           </div>
+           <div class='epg-desc'>
+               ${sanitize(broadcast?.description)}
+           </div>`
+           .trim().replaceAll(/ *\n *</g, '<');;
+        dialog.dataset.eventId = broadcast.eventId;
+    }
+
+    function sanitize(text) {
+       if (!text) {
+          return '';
+       }
+       return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('\n', '<br/>'). replaceAll(/\[[^\[]*\]/g, '');
+    }
+  
+    function getChannel(name) {
+       if (name.startsWith('alt_')) {
+          name = name.substr(4);
+       }
+       var result = config.channels[name];
+       while (!result && name.length > 0) {
+          name = name.substr(0, name.length - 1);
+          result = config.channels[name];
+       }
+       return result;
+    }
+    
+    function buildChannelList(channels) {
+       config.channels = {};
+       const container = document.getElementById('channels');
+       const template = document.createElement('template');
+       var index = 1;
+       channels.forEach(name => {
+          var channel = { name: name, index: index++, id: name.toLowerCase().replace(/[ \.\-_]/g, '') }
+          config.channels[name] = channel;
+          // todo: update icons in TVHeadend and use these
+          template.innerHTML = `
+             <div class='channel' id='${channel.id}' data_channel_name='${channel.name}' >
+                <img class='channel-icon' src='${getChannelIcon(channel.id)}' alt='${channel.name}' />
+                <div class='epg'>
+                   <div class='epg-title'></div>
+                   <div class='epg-desc'></div>
+                </div>
+             </div>`
+             .trim().replaceAll(/ *\n *</g, '<');
+          channel.element = template.content.children[0];
+          container.append(channel.element);
+          document.getElementById(channel.id).querySelector('.epg').addEventListener('click', async (e) => {
+             if (e.target.textContent) {
+                if (getChannel(name).epg[0].stop.getTime() < Date.now()) {
+                   await loadEpg();
+                }
+                var dialog = document.getElementById('epgdetail');
+                dialog.dataset.channel = name;
+                showBroadcast(getChannel(name).epg[0]);
+                dialog.showModal();
+             }
+          });
+       });
+    }
+
+    function extractEpgData(tvhEpgEntry) {
+       return {
+          channel: tvhEpgEntry.channelName,
+          eventId: tvhEpgEntry.eventId,
+          start: new Date(tvhEpgEntry.start*1000),
+          stop: new Date(tvhEpgEntry.stop*1000),
+          title: tvhEpgEntry.title,
+          description: tvhEpgEntry.description,
+          nextEventId: tvhEpgEntry.nextEventId
+       };
+    }
+    
+    function formatTime(date) {
+       if (!date) return '00:00';
+       var hour = date.getHours();
+       var minute = date.getMinutes();
+       return hour + (minute < 10 ? ':0' : ':') + minute;
+    }
+    
+    function nvl(instance, ifNull = '') {
+       return instance ?  instance : ifNull;
+    }
+    
+    async function loadEpg() {
+       var epg = await tvheadend.getCurrentEPG();
+       epg.forEach(e => {
+          var epg = extractEpgData(e);
+          var channel = getChannel(epg.channel);
+          if (channel) {
+             channel.epg = [epg];
+             channel.element.querySelector('.epg-title').innerHTML = `${formatTime(epg?.start)} - ${formatTime(epg?.stop)} ${sanitize(epg?.title)}`;
+             channel.element.querySelector('.epg-desc' ).innerHTML = `${sanitize(epg?.description)}`;
+          }
+       });
+    }
+    
+    async function initActions(tv) {
+       var channelList = (await tv.getChannelList()).channelList
+          .filter(e => e.TV)
+          .filter(e => !e.invisible)
+          .filter(e => !e.scrambled)
+          .filter(e => !e.skipped)
+          //.filter(e => e.channelNumber < 100)
+          .forEach(e => {
+             var channel = getChannel(e.channelName);
+             if (channel && !channel.channelId) {
+                channel.channelId = e.channelId;
+                document.getElementById(channel.id)?.querySelector('.channel-icon').addEventListener('click', async () => {
+                    await tv.switchChannel(e.channelId);
+                });
+             }
+          });
+    }
+
+    // todo: auto discover tv
+
+    function onTvConnected(tv) {
+       window.tv = tv; // for experiments on dev console
+       config.tv_app_key = tv.appKey;
+       window.localStorage.config = JSON.stringify(config);
+       (async () => {
+          var volume = await tv.getVolume();
+          document.getElementById('volume-slider').value = volume.volume;
+       })();
+       document.getElementById('volume-slider').addEventListener('input', async (event) => {
+          await tv.setVolume(event.srcElement.valueAsNumber);
+       });
+       (async () => await initActions(tv))();
+    }
+    
+    function onTvClose() {
+        window.tv = undefined;
+    }
+    
+    function connect_to_tv() {
+       if (!window.tv || !window.tv.isConnected()) {
+          (async () => { await connectTV(config.tv_ip, config.tv_app_key, onTvConnected, onTvClose); })();
+       }
+    }
+    
+    async function handleKodiEvent(event) {
+          switch (event.method) {
+             case 'Player.OnPlay':
+             case 'Player.OnResume':
+                document.getElementById('stop').style.display = '';
+                var d = await kodi.getPlayerInfos();
+                if (event?.params?.data?.item?.channeltype) {
+                  document.getElementById('kodi').querySelector('.epg-title').innerHTML = sanitize(d.title);
+               } else {
+                   // display duration without seconds
+                   document.getElementById('kodi').querySelector('.epg-title').innerHTML = `${d.finishtime} (${d.duration.substring(0, d.duration.length - 3)}) ${sanitize(d.title)}`;
+                   document.getElementById('pause').style.display = '';
+                }
+                break;
+             case 'Player.OnPause':
+                if (event.params.data.item?.channeltype != 'tv') {
+                   document.getElementById('play').style.display = 'none';
+                   document.getElementById('pause').style.display = '';
+                }
+                break;
+             case 'Player.OnStop':
+                document.getElementById('kodi').querySelector('.epg-title').innerHTML = '';
+                document.getElementById('stop').style.display = 'none';
+                document.getElementById('pause').style.display = 'none';
+                document.getElementById('play').style.display = 'none';
+                break;
+             case 'Input.OnInputRequested':
+                document.getElementById('kodi-textinput').showModal();
+                break;
+             case 'Input.OnInputFinished':
+                document.getElementById('kodi-textinput').close();
+                break;
+             default:
+                console.debug('not handled kodi event', event);
+          }
+    }
+    
+    async function updateKodiState() {
+       var playerInfo = await kodi.getPlayerInfos();
+       if (playerInfo) {
+          handleKodiEvent({method:"Player.OnResume"});
+       } else {
+         handleKodiEvent({method:"Player.OnStop"});
+       }
+    }
+    
+    // initializaton
+    
+    var config = {};
+    var tvheadend;
+    var kodi;
+    
+    async function connect_to_kodi() {
+       if (kodi?.isConnected()) {
+          return;
+       }
+       kodi?.close();
+       console.debug('connecting kodi..');
+       kodi = new Kodi(config.kodi_url);
+       await kodi.connect();
+       console.debug('connected');
+       kodi.eventHandler = handleKodiEvent;
+       window.kodi = kodi;
+    }
+    
+    (async () => {
+       {
+          var request = await fetch('config.json');
+          config = JSON.parse(await request.text());
+          config.kodi_url = config.kodi_url.replaceAll('${hostname}', location.hostname);
+          config.tvh_url = config.tvh_url.replaceAll('${hostname}', location.hostname);
+       }
+       tvheadend = new TVH(config.tvh_url);
+       buildChannelList(config.channelNames);
+       await connect_to_kodi();
+       const elementKodi = document.getElementById('kodi');
+       // elementKodi.querySelector('.channel-icon').src = '';
+       elementKodi.querySelector('.channel-icon').addEventListener('click', async () => {
+          if (tv && tv.connected) {
+             await tv.switchInput('HDMI_1');
+          }
+       });
+       await loadEpg();
+       document.getElementById('power').addEventListener('click', async () => {
+          if (window.tv) {
+             tv.turnOff();
+          } else {
+             kodi.switchOnTv();
+             await (new Promise((resolve, reject) => setTimeout(resolve, 20 * 1000, null)));
+             connect_to_tv();
+          }
+       }); 
+       connect_to_tv();
+       document.getElementById('kodi-input-send').addEventListener('click', async e => {
+          var text = document.getElementById('kodi-input').value;
+          await kody.sendText(text);
+       });
+       await updateKodiState();
+       var epgDialog = document.getElementById('epgdetail')
+       epgDialog.addEventListener('click', (e) => {
+          epgDialog.close();
+       });
+       document.getElementById('nextEpg').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          var eventId = e.srcElement.parentElement.dataset.eventId;
+          var channel = getChannel(e.srcElement.parentElement.dataset.channel);
+          var epg = channel.epg;
+          var index = epg.findIndex((e) => e.eventId == eventId);
+          var broadcast = (index != -1) ? epg[index + 1] : null;
+          if (!broadcast) {
+             broadcast = extractEpgData(await tvheadend.getEpgEvent(epg[epg.length - 1].nextEventId));
+             epg.push(broadcast);
+          }
+          showBroadcast(broadcast);
+       });
+       document.getElementById('prevEpg').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          var eventId = e.srcElement.parentElement.dataset.eventId;
+          var channel = getChannel(e.srcElement.parentElement.dataset.channel);
+          var epg = channel.epg;
+          var broadcast = epg.find((e) => e.nextEventId == eventId);
+          if (broadcast) {
+             showBroadcast(broadcast);
+          }
+       });
+    })();
+    
+    document.addEventListener('visibilitychange', async () => {
+       if (document.visibilityState === 'visible') {
+          await loadEpg();
+          await connect_to_kodi();
+          connect_to_tv();
+       }
+    });
+         
+  </script>
+</body>
+
+</html>

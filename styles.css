@@ -1,0 +1,90 @@
+.buttons {
+  display: grid;
+  grid-template-columns: auto auto auto auto auto;
+  padding: 2.5em;
+}
+.grid-item {
+  vertical-align: center;
+  text-align: center;
+  padding: 18%;
+}
+#special-buttons {
+  margin: auto;
+  vertical-align: center;
+  text-align: center;
+  padding: 18%;
+  grid-column: 4 / 5;
+}
+#volume-slider {
+  grid-column-start: 2;
+  grid-column-end: 5;
+  vertical-align: center;
+  text-align: center;
+  padding: 18%;
+}
+.channels {
+  overflow-y: auto;
+  bottom: 0px;
+}
+.channel {
+  display: grid;
+  grid-template-columns: 8em auto;
+  padding: 3px;
+  background-color: rgb(220, 220, 220);
+}
+.channel-icon {
+   width: 8em;
+   height: 8em;
+}
+.epg {
+  background-color: rgba(255, 255, 255, 0.8);
+  overflow-y: hidden;
+  height: 8em;
+}
+.epg-title {
+  font-size: 2em;
+  font-weight: bold;
+  padding: 3px;
+}
+.epg-desc {
+  font-size: 1.4em;
+  padding: 3px;
+}
+#epgdetail {
+  font-size: 2em;
+  height: 80%;
+  width: 95%;
+}
+#nextEpg {
+  right: 1em;
+}
+#prevEpg {
+  left: 1em;
+}
+#prevEpg, #nextEpg {
+  background: #dadada55;
+  border: none;
+  color: #aaa;
+  display: block;
+  font-size: 1em;
+  padding: 1em;
+  width: 3em;
+  position: fixed;
+  bottom: 10%;
+}
+#koditextinput {
+  font-size: 2em;
+  width: 90%;
+}
+#koditextinput > * {
+  padding: 1em;
+  display: block;
+  margin: auto;
+  text-align: center;
+}
+#koditextinput > input {
+  width: 90%;
+  padding: 1em;
+  font-size: 1em;
+}
+
