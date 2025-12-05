@@ -113,7 +113,7 @@
         var dialog = document.getElementById('epgdetail');
         var channel = getChannel(broadcast.channel)
         dialog.firstElementChild.innerHTML = `
-           <img class='channel-icon' src='${getChannelIcon(channel.id)}' alt="${channel.name}">
+           <img class='channel-icon' src='${channel.icon}' alt="${channel.name}">
            <div class='epg-title'>
                ${formatTime(broadcast?.start)} - ${formatTime(broadcast?.stop)} ${sanitize(broadcast?.title)}
            </div>
@@ -148,14 +148,21 @@
        const container = document.getElementById('channels');
        const template = document.createElement('template');
        var index = 1;
-       channels.forEach(name => {
-          var channel = { name: name, index: index++, id: name.toLowerCase().replace(/[ \.\-_]/g, '') }
-          config.channels[name] = channel;
-          // todo: update icons in TVHeadend and use these
+       channels.forEach(channel => {
+          var name = channel.name;
+          var id = channel.id || name.toLowerCase().replace(/[ \.\-_]/g, '')
+          var channel = { 
+            name: name,
+            index: index++, 
+            id: id,
+            icon: channel.icon || `https://raw.githubusercontent.com/MarhyCZ/picons/master/640/${id}.png`
+         }
+          config.channels[channel.name] = channel;
+          // todo: use icons from TVHeadend
           template.innerHTML = `
              <div class='channel' id='${channel.id}' data_channel_name='${channel.name}' >
-                <img class='channel-icon' src='${getChannelIcon(channel.id)}' alt='${channel.name}' />
-                <div class='epg'>
+                <img class='channel-icon' src='${channel.icon}' alt='${channel.name}' />
+                <div class='epg' id='epg-${channel.id}'>
                    <div class='epg-title'></div>
                    <div class='epg-desc'></div>
                 </div>
@@ -163,7 +170,7 @@
              .trim().replaceAll(/ *\n *</g, '<');
           channel.element = template.content.children[0];
           container.append(channel.element);
-          document.getElementById(channel.id).querySelector('.epg').addEventListener('click', async (e) => {
+          document.getElementById('epg-' + channel.id).addEventListener('click', async (e) => {
              if (e.target.textContent) {
                 if (getChannel(name).epg[0].stop.getTime() < Date.now()) {
                    await loadEpg();
@@ -224,9 +231,12 @@
              var channel = getChannel(e.channelName);
              if (channel && !channel.channelId) {
                 channel.channelId = e.channelId;
+                console.debug(`tv channel '${e.channelName}', tv=${e.channelNumber}, remote=${channel.index}`);
                 document.getElementById(channel.id)?.querySelector('.channel-icon').addEventListener('click', async () => {
                     await tv.switchChannel(e.channelId);
                 });
+             } else {
+                console.info('tv channel not found in config:', e.channelName);
              }
           });
     }
@@ -234,6 +244,7 @@
     // todo: auto discover tv
 
     function onTvConnected(tv) {
+       console.debug('TV connected');
        window.tv = tv; // for experiments on dev console
        config.tv_app_key = tv.appKey;
        window.localStorage.config = JSON.stringify(config);
@@ -249,6 +260,7 @@
     
     function onTvClose() {
         window.tv = undefined;
+        console.debug('TV disconnected');
     }
     
     function connect_to_tv() {
@@ -330,7 +342,8 @@
           config.tvh_url = config.tvh_url.replaceAll('${hostname}', location.hostname);
        }
        tvheadend = new TVH(config.tvh_url);
-       buildChannelList(config.channelNames);
+       buildChannelList(config.channel_list);
+       delete config.channel_list;
        await connect_to_kodi();
        const elementKodi = document.getElementById('kodi');
        // elementKodi.querySelector('.channel-icon').src = '';

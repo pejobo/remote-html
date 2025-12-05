@@ -1,34 +1,18 @@
 {
         "tv_ip": "192.168.178.35",
         "tv_app_key": "",
-        "kodi_url": "ws://pi3.fritz.box:9090/jsonrpc",
-        "tvh_url": "http://pi3.fritz.box:9981",
-        "channelNames": [
-                "Das Erste",
-                "ZDF",
-                "WDR HD",
-                "RTL",
-                "SAT.1",
-                "ProSieben",
-                "VOX",
-                "sixx",
-                "NITRO",
-                "kabel eins",
-                "TELE 5",
-                "arte",
-                "zdf_neo",
-                "ONE",
-                "NDR",
-                "SR",
-                "SWR",
-                "hr-fernsehen",
-                "BR",
-                "rbb Berlin",
-                "MDR",
-                "Eurosport 1",
-                "SPORT1",
-                "tagesschau24",
-                "3sat",
-                "ZDFinfo"
+        "kodi_url": "ws://<kodi-host>:9090/jsonrpc",
+        "tvh_url": "http://<tvheadend-host>:9981",
+        "channel-list": [
+                {
+                        "id": "unique-channel-id",
+                        "name": "name, should match TVHeadend channel name and name used in LG TV, suffix could be omitted",
+                        "icon": "url to channel icon image"
+,               },
+                { 
+                        "id": "daserste",
+                        "name": "Das Erste",
+                        "icon": "https://raw.githubusercontent.com/MarhyCZ/picons/master/640/daserste.png"
+                }
         ]
 }
