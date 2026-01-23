@@ -8,7 +8,7 @@ class TVH {
    }   
    
    async getCurrentEPG() {
-       var response = await fetch(this.url + "/api/epg/events/grid?mode=now");
+       var response = await fetch(this.url + "/api/epg/events/grid?mode=now&channelTags=TV%20channels");
        var data = await response.json();
        return data.entries;
    }

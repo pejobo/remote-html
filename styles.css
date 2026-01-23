@@ -4,23 +4,21 @@
   padding: 2.5em;
 }
 .grid-item {
-  vertical-align: center;
+  display: flex;
   text-align: center;
   padding: 18%;
 }
 #special-buttons {
   margin: auto;
   vertical-align: center;
-  text-align: center;
   padding: 18%;
   grid-column: 4 / 5;
 }
 #volume-slider {
   grid-column-start: 2;
   grid-column-end: 5;
-  vertical-align: center;
-  text-align: center;
   padding: 18%;
+  align-self: center;
 }
 .channels {
   overflow-y: auto;

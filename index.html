@@ -1,5 +1,6 @@
 <html>
 <head>
+   <meta name="viewport" content="width=device-width, initial-scale=0.5, maximum-scale=0.5, user-scalable=no">
    <link rel="stylesheet" href="styles.css">
    <link rel="icon" type="image/x-icon" href="favicon.png">
 </head>
@@ -56,6 +57,7 @@
   <script src='tv.js'></script>
   <script src='tvh.js'></script>
   <script src='kodi.js'></script>
+   <script src='holdrepeat.js'></script>
   <script>
   
     ['stop', 'play', 'pause'].forEach(id => document.getElementById(id).style.display = 'none');
@@ -93,7 +95,7 @@
     });
 
     document.querySelectorAll('[data-target="actualsource"]').forEach(e => {
-       e.addEventListener('click', async () => {
+       addClick(e, async () => {
           var id = e.id;
           var input = await tv.getInput();
           if (input == 'tv') {
@@ -103,6 +105,14 @@
              await kodi.sendKey(key);
           }
        });
+    });
+
+    addLongPress(document.getElementById('up'), () => {
+      window.tv?.clickButton('VOLUMEUP');
+    });
+
+    addLongPress(document.getElementById('down'), () => {
+      window.tv?.clickButton('VOLUMEDOWN');
     });
 
     function getChannelIcon(channelId) {
@@ -216,6 +226,8 @@
              channel.epg = [epg];
              channel.element.querySelector('.epg-title').innerHTML = `${formatTime(epg?.start)} - ${formatTime(epg?.stop)} ${sanitize(epg?.title)}`;
              channel.element.querySelector('.epg-desc' ).innerHTML = `${sanitize(epg?.description)}`;
+          } else {
+             console.info('epg channel not found:', epg.channel);
           }
        });
     }
@@ -236,7 +248,7 @@
                     await tv.switchChannel(e.channelId);
                 });
              } else {
-                console.info('tv channel not found in config:', e.channelName);
+                console.info('no match for channel from tv in config:', e.channelName);
              }
           });
     }
@@ -256,11 +268,13 @@
           await tv.setVolume(event.srcElement.valueAsNumber);
        });
        (async () => await initActions(tv))();
+       document.getElementById('power').children[0].setAttribute("fill", "#39AF35");
     }
     
     function onTvClose() {
         window.tv = undefined;
         console.debug('TV disconnected');
+        document.getElementById('power').children[0].removeAttribute("fill");
     }
     
     function connect_to_tv() {
@@ -365,7 +379,7 @@
        connect_to_tv();
        document.getElementById('kodi-input-send').addEventListener('click', async e => {
           var text = document.getElementById('kodi-input').value;
-          await kody.sendText(text);
+          await kodi.sendText(text);
        });
        await updateKodiState();
        var epgDialog = document.getElementById('epgdetail')
@@ -401,6 +415,7 @@
        if (document.visibilityState === 'visible') {
           await loadEpg();
           await connect_to_kodi();
+          await updateKodiState();
           connect_to_tv();
        }
     });
