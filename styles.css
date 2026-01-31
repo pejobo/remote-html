@@ -4,8 +4,7 @@
   padding: 2.5em;
 }
 .grid-item {
-  display: flex;
-  text-align: center;
+  align-self: center;
   padding: 18%;
 }
 #special-buttons {

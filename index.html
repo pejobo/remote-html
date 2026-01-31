@@ -115,10 +115,6 @@
       window.tv?.clickButton('VOLUMEDOWN');
     });
 
-    function getChannelIcon(channelId) {
-      return `https://raw.githubusercontent.com/MarhyCZ/picons/master/640/${channelId}.png`;
-    }
-
     function showBroadcast(broadcast) {
         var dialog = document.getElementById('epgdetail');
         var channel = getChannel(broadcast.channel)
