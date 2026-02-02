@@ -1,14 +1,14 @@
 {
-        "tv_ip": "192.168.178.35",
-        "tv_app_key": "",
-        "kodi_url": "ws://<kodi-host>:9090/jsonrpc",
-        "tvh_url": "http://<tvheadend-host>:9981",
+        "tv_ip": "xxx.xxx.xxx.xxx",
+        "tv_app_key": "<will be logged in console>",
+        "kodi_url": "ws://${hostname}:9090/jsonrpc",
+        "tvh_url": "http://${hostname}:9981",
         "channel-list": [
                 {
                         "id": "unique-channel-id",
-                        "name": "name, should match TVHeadend channel name and name used in LG TV, suffix could be omitted",
+                        "name": "name, should match TVHeadend channel name and name used in LG TV, suffix (like HD) could be omitted",
                         "icon": "url to channel icon image"
-,               },
+               },
                 { 
                         "id": "daserste",
                         "name": "Das Erste",
