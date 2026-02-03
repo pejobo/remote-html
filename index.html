@@ -155,11 +155,11 @@
          var name = channel.name;
          var id = channel.id || name.toLowerCase().replace(/[ \.\-_]/g, '')
          var channel = { 
-         name: name,
-         index: index++, 
-         id: id,
-         icon: channel.icon || `https://raw.githubusercontent.com/MarhyCZ/picons/master/640/${id}.png`
-      }
+            name: name,
+            index: index++, 
+            id: id,
+            icon: channel.icon || `https://raw.githubusercontent.com/MarhyCZ/picons/master/640/${id}.png`
+         }
          config.channels[channel.name] = channel;
          // todo: use icons from TVHeadend
          template.innerHTML = `
@@ -337,6 +337,7 @@
       console.debug('connected');
       kodi.eventHandler = handleKodiEvent;
       window.kodi = kodi;
+      updateKodiState();
    }
    
    (async () => {
@@ -349,7 +350,6 @@
       tvheadend = new TVH(config.tvh_url);
       buildChannelList(config.channel_list);
       delete config.channel_list;
-      await connect_to_kodi();
       const elementKodi = document.getElementById('kodi');
       // elementKodi.querySelector('.channel-icon').src = '';
       elementKodi.querySelector('.channel-icon').addEventListener('click', async () => {
@@ -357,7 +357,6 @@
             await tv.switchInput('HDMI_1');
          }
       });
-      await loadEpg();
       document.getElementById('power').addEventListener('click', async () => {
          if (window.tv) {
             tv.turnOff();
@@ -372,7 +371,6 @@
          var text = document.getElementById('kodi-input').value;
          await kodi.sendText(text);
       });
-      await updateKodiState();
       var epgDialog = document.getElementById('epgdetail')
       epgDialog.addEventListener('click', (e) => {
          epgDialog.close();
@@ -400,13 +398,14 @@
             showBroadcast(broadcast);
          }
       });
+      connect_to_kodi();
+      loadEpg();
    })();
    
    document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
-         await loadEpg();
-         await connect_to_kodi();
-         await updateKodiState();
+         loadEpg();
+         connect_to_kodi();
          connect_to_tv();
       }
    });
