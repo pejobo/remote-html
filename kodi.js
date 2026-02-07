@@ -6,6 +6,7 @@ class Kodi {
     this.pendingRequests = new Map();
     this.id = 0;
     this.eventHandler = null;
+    this.onclose = null;
   }
 
   close() {
@@ -19,7 +20,10 @@ class Kodi {
   async connect() {
      return new Promise((resolve, reject) => {
         this.conn = new ProxyWebSocket(this.url);
-        this.conn.onopen = () => resolve();
+        this.conn.onopen = () => {
+           this.conn.onclose = () => { if (this.onclose) this.onclose(); };
+           resolve();
+        };
         this.conn.onclose = () => reject(new Error('Connection closed'));
         this.conn.onerror = (err) => reject(new Error('Connection error'));
         this.conn.onmessage = async (evt) => this.handleMessage(evt.data);
@@ -59,7 +63,6 @@ class Kodi {
   }
 
   async switchOnTv() {
-    // todo: this behaves differently than in yatse
     await this.request({jsonrpc: "2.0", method: "Addons.ExecuteAddon", params: { addonid: "plugin.program.scripts", params: { action: "execute", id: "tv-on" }}, id: this.genid()});
     // we fix this by sending an additional back command
     await this.sendKey('backspace');

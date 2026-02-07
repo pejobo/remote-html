@@ -106,7 +106,6 @@ class TV {
 
 
 async function connectTV(ip, app_key, onConnected, onClose) {
-  try {
     var client = new SSAPClient(ip, app_key);
     log('connecting tv...');
     await client.connect();
@@ -115,9 +114,6 @@ async function connectTV(ip, app_key, onConnected, onClose) {
     console.log('tv app key:', app_key);
     log('...connected to tv');
     onConnected(new TV(ip, client, app_key, onClose));
-  } catch (err) {
-    log('error connecting to tv: ' + err); console.info(err); 
-  }
 }
 
 // end

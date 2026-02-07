@@ -32,6 +32,7 @@
 
   <div class='channels' id='channels'>
      <div class='channel' id='kodi'>
+        <span class='connection-status' id='kodi-status'></span>
         <img class='channel-icon' src='https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Kodi-logo-Thumbnail-light-transparent.png/600px-Kodi-logo-Thumbnail-light-transparent.png' alt='Kodi' />
         <div class='epg'>
            <div class='epg-title'>&nbsp;</div>
@@ -161,7 +162,7 @@
             icon: channel.icon || `https://raw.githubusercontent.com/MarhyCZ/picons/master/640/${id}.png`
          }
          config.channels[channel.name] = channel;
-         // todo: use icons from TVHeadend
+         // optional: use icons from TVHeadend
          template.innerHTML = `
             <div class='channel' id='${channel.id}' data_channel_name='${channel.name}' >
                <img class='channel-icon' src='${channel.icon}' alt='${channel.name}' />
@@ -270,7 +271,27 @@
    
    function connect_to_tv() {
       if (!window.tv || !window.tv.isConnected()) {
-         (async () => { await connectTV(config.tv_ip, config.tv_app_key, onTvConnected, onTvClose); })();
+         document.getElementById('power').children[0].setAttribute("fill", "#F02020");
+         (async () => {
+            const maxRetries = 5;
+            let delay = 10000;
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+               try {
+                  await connectTV(config.tv_ip, config.tv_app_key, onTvConnected, onTvClose);
+                  return;
+               } catch (e) {
+                  if (attempt < maxRetries) {
+                     console.warn(`TV connection attempt ${attempt} failed, retrying in ${delay/1000}s...`);
+                     await new Promise(r => setTimeout(r, delay));
+                     delay *= 2;
+                  } else {
+                     console.error(`TV connection attempt ${attempt} failed, giving up.`);
+                     document.getElementById('power').children[0].setAttribute("fill", "#F00000");
+                  }
+               }
+            }
+            console.error('TV connection failed after max retries');
+         })();
       }
    }
    
@@ -328,14 +349,24 @@
    
    async function connect_to_kodi() {
       if (kodi?.isConnected()) {
+         console.info('already connected to kodi');
          return;
       }
       kodi?.close();
-      console.debug('connecting kodi..');
+      console.info('connecting kodi..');
       kodi = new Kodi(config.kodi_url);
       await kodi.connect();
-      console.debug('connected');
+      console.info('connected to kodi');
+      document.getElementById('kodi-status').classList.add('connected');
+      kodi.onclose = () => {
+         document.getElementById('kodi-status').classList.remove('connected');
+         console.debug('kodi connection closed');
+      };
       kodi.eventHandler = handleKodiEvent;
+      if (window.SWITCH_TV_ON) {
+         kodi.switchOnTv();
+         delete window.SWITCH_TV_ON;
+      }
       window.kodi = kodi;
       updateKodiState();
    }
@@ -360,10 +391,11 @@
       document.getElementById('power').addEventListener('click', async () => {
          if (window.tv) {
             tv.turnOff();
-         } else {
+         } else if (kodi) {
             kodi.switchOnTv();
-            await (new Promise((resolve, reject) => setTimeout(resolve, 20 * 1000, null)));
             connect_to_tv();
+         } else {
+            window.SWITCH_TV_ON = true;
          }
       }); 
       connect_to_tv();
