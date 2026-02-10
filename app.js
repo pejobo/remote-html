@@ -151,19 +151,48 @@ function nvl(instance, ifNull = '') {
    return instance ?  instance : ifNull;
 }
 
+function updateChannelEpg(channel, epgEntry) {
+   if (channel) {
+      channel.epg = [epgEntry];
+      channel.element.querySelector('.epg-title').innerHTML = `${formatTime(epgEntry?.start)} - ${formatTime(epgEntry?.stop)} ${sanitize(epgEntry?.title)}`;
+      channel.element.querySelector('.epg-desc' ).innerHTML = `${sanitize(epgEntry?.description)}`;
+   }
+}
+
 async function loadEpg() {
-   var epg = await tvheadend.getCurrentEPG();
-   epg.forEach(e => {
-      var epg = extractEpgData(e);
-      var channel = getChannel(epg.channel);
-      if (channel) {
-         channel.epg = [epg];
-         channel.element.querySelector('.epg-title').innerHTML = `${formatTime(epg?.start)} - ${formatTime(epg?.stop)} ${sanitize(epg?.title)}`;
-         channel.element.querySelector('.epg-desc' ).innerHTML = `${sanitize(epg?.description)}`;
-      } else {
-         console.info('epg channel not found:', epg.channel);
-      }
-   });
+   try {
+      var epgRaw = await tvheadend.getCurrentEPG();
+      var epgData = epgRaw.map(e => extractEpgData(e));
+      epgData.forEach(epg => {
+         var channel = getChannel(epg.channel);
+         updateChannelEpg(channel, epg);
+      });
+      epgRaw = await tvheadend.getAllEPG();
+      epgData = epgRaw.map(e => extractEpgData(e));
+      window.localStorage.setItem('epg_cache', JSON.stringify(epgData));
+   } catch (error) {
+      console.warn('Failed to load EPG from server', error);
+   }
+}
+
+function loadCachedEpg() {
+   var cached = window.localStorage.getItem('epg_cache');
+   if (!cached) return;
+   try {
+      var epgData = JSON.parse(cached);
+      var now = new Date();
+      epgData.forEach(epg => {
+         // reconstruct Dates from strings
+         epg.start = new Date(epg.start);
+         epg.stop = new Date(epg.stop);
+         if (epg.start <= now && now < epg.stop) {
+            var channel = getChannel(epg.channel);
+            updateChannelEpg(channel, epg);
+         }
+      });
+   } catch (e) {
+      console.warn('Failed to load EPG cache', e);
+   }
 }
 
 async function initActions(tv) {
@@ -226,7 +255,7 @@ function connect_to_tv() {
                   delay *= 2;
                } else {
                   console.error(`TV connection attempt ${attempt} failed, giving up.`);
-                  document.getElementById('power').children[0].setAttribute("fill", "#F00000");
+                  document.getElementById('power').children[0].setAttribute("fill", "#0F0000");
                }
             }
          }
@@ -283,7 +312,6 @@ async function updateKodiState() {
 
 async function connect_to_kodi() {
    if (kodi?.isConnected()) {
-      console.info('already connected to kodi');
       return;
    }
    kodi?.close();
@@ -324,6 +352,7 @@ async function init() {
    tvheadend = new TVH(config.tvh_url);
    buildChannelList(config.channel_list);
    delete config.channel_list;
+   loadCachedEpg();
    const elementKodi = document.getElementById('kodi');
    // elementKodi.querySelector('.channel-icon').src = '';
    elementKodi.querySelector('.channel-icon').addEventListener('click', async () => {
@@ -352,8 +381,8 @@ async function init() {
    });
    document.getElementById('nextEpg').addEventListener('click', async (e) => {
       e.stopPropagation();
-      var eventId = e.srcElement.parentElement.dataset.eventId;
-      var channel = getChannel(e.srcElement.parentElement.dataset.channel);
+      var eventId = e.target.parentElement.dataset.eventId;
+      var channel = getChannel(e.target.parentElement.dataset.channel);
       var epg = channel.epg;
       var index = epg.findIndex((e) => e.eventId == eventId);
       var broadcast = (index != -1) ? epg[index + 1] : null;
@@ -365,8 +394,8 @@ async function init() {
    });
    document.getElementById('prevEpg').addEventListener('click', async (e) => {
       e.stopPropagation();
-      var eventId = e.srcElement.parentElement.dataset.eventId;
-      var channel = getChannel(e.srcElement.parentElement.dataset.channel);
+      var eventId = e.target.parentElement.dataset.eventId;
+      var channel = getChannel(e.target.parentElement.dataset.channel);
       var epg = channel.epg;
       var broadcast = epg.find((e) => e.nextEventId == eventId);
       if (broadcast) {
@@ -381,6 +410,7 @@ async function init() {
 
 document.addEventListener('visibilitychange', async () => {
    if (document.visibilityState === 'visible') {
+      loadCachedEpg();
       loadEpg();
       connect_to_kodi();
       connect_to_tv();
