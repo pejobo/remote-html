@@ -152,23 +152,28 @@ function nvl(instance, ifNull = '') {
 }
 
 function updateChannelEpg(channel, epgEntry) {
-   if (channel) {
-      channel.epg = [epgEntry];
-      channel.element.querySelector('.epg-title').innerHTML = `${formatTime(epgEntry?.start)} - ${formatTime(epgEntry?.stop)} ${sanitize(epgEntry?.title)}`;
-      channel.element.querySelector('.epg-desc' ).innerHTML = `${sanitize(epgEntry?.description)}`;
+   now = Date.now();
+   if (channel && epgEntry.stop.getTime() > now) {
+      if (!channel.epg) {
+         channel.epg = [epgEntry];
+      } else if (!channel.epg.find(e => e.eventId == epgEntry.eventId)) {
+         channel.epg.push(epgEntry);
+         channel.epg.sort((a, b) => a.start.getTime() - b.start.getTime());
+      }
+      if (epgEntry.start.getTime() <= now && now < epgEntry.stop.getTime()) {
+         channel.element.querySelector('.epg-title').innerHTML = `${formatTime(epgEntry?.start)} - ${formatTime(epgEntry?.stop)} ${sanitize(epgEntry?.title)}`;
+         channel.element.querySelector('.epg-desc' ).innerHTML = `${sanitize(epgEntry?.description)}`;
+      }
    }
 }
 
 async function loadEpg() {
    try {
-      var epgRaw = await tvheadend.getCurrentEPG();
-      var epgData = epgRaw.map(e => extractEpgData(e));
+      epgData = (await tvheadend.getEPG()).map(e => extractEpgData(e));
       epgData.forEach(epg => {
          var channel = getChannel(epg.channel);
          updateChannelEpg(channel, epg);
       });
-      epgRaw = await tvheadend.getAllEPG();
-      epgData = epgRaw.map(e => extractEpgData(e));
       window.localStorage.setItem('epg_cache', JSON.stringify(epgData));
    } catch (error) {
       console.warn('Failed to load EPG from server', error);
@@ -185,14 +190,23 @@ function loadCachedEpg() {
          // reconstruct Dates from strings
          epg.start = new Date(epg.start);
          epg.stop = new Date(epg.stop);
-         if (epg.start <= now && now < epg.stop) {
-            var channel = getChannel(epg.channel);
-            updateChannelEpg(channel, epg);
-         }
+         var channel = getChannel(epg.channel);
+         updateChannelEpg(channel, epg);
       });
    } catch (e) {
       console.warn('Failed to load EPG cache', e);
    }
+}
+
+async function getEpgByEventId(eventId) {
+   var epg = extractEpgData(await tvheadend.getEpgEvent(eventId));
+   var channel = getChannel(epg.channel);
+   if (epg.start.getTime() <= Date.now() + 4*60*60*1000) {
+      // update cache (asynchronously) when it does not include entries later than 4h from now
+      loadEpg();
+   }
+   updateChannelEpg(channel, epg);
+   return epg;
 }
 
 async function initActions(tv) {
@@ -387,8 +401,7 @@ async function init() {
       var index = epg.findIndex((e) => e.eventId == eventId);
       var broadcast = (index != -1) ? epg[index + 1] : null;
       if (!broadcast) {
-         broadcast = extractEpgData(await tvheadend.getEpgEvent(epg[epg.length - 1].nextEventId));
-         epg.push(broadcast);
+         broadcast = await getEpgByEventId(epg[epg.length - 1].nextEventId);
       }
       showBroadcast(broadcast);
    });

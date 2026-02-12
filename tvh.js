@@ -1,6 +1,5 @@
-// class for communication with TVHeadend REST API, if not served from TVHeadend itself
-// (i.e. located under /usr/share/tvheadend/src/webui/static) set "HTTP CORS origin" to
-// "*" in THV settings
+// class for communication with TVHeadend REST API, set "HTTP CORS origin" to
+// "*" in TVH settings to allow access from this app
 class TVH {
 
    constructor(url) {
@@ -13,8 +12,8 @@ class TVH {
       return data.entries;
    }
 
-   async getAllEPG() {
-      var response = await fetch(this.url + "/api/epg/events/grid?channelTag=TV%20channels&limit=200");
+   async getEPG(limit = 400) {
+      var response = await fetch(this.url + "/api/epg/events/grid?channelTag=TV%20channels&limit=" + limit);
       var data = await response.json();
       return data.entries;
    }
