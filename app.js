@@ -215,6 +215,7 @@ async function initActions(tv) {
       .filter(e => !e.invisible)
       .filter(e => !e.scrambled)
       .filter(e => !e.skipped)
+      .filter(e => !config.channel_ignore_list.includes(e.channelName))
       //.filter(e => e.channelNumber < 100)
       .forEach(e => {
          var channel = getChannel(e.channelName);
@@ -225,7 +226,7 @@ async function initActions(tv) {
                await tv.switchChannel(e.channelId);
             });
          } else {
-            console.info('no match for channel from tv in config:', e.channelName);
+            console.debug('no match for channel from tv in config:', e.channelName);
          }
       });
 }

@@ -3,7 +3,11 @@
         "tv_app_key": "<will be logged in console>",
         "kodi_url": "ws://${hostname}:9090/jsonrpc",
         "tvh_url": "http://${hostname}:9981",
-        "channel-list": [
+        "channel_ignore_list": [
+                "channel name to ignore 1",
+                "channel name to ignore 2"
+        ],
+        "channel_list": [
                 {
                         "id": "unique-channel-id",
                         "name": "name, should match TVHeadend channel name and name used in LG TV, suffix (like HD) could be omitted",
