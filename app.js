@@ -6,11 +6,11 @@
 async function load(route) {
    var response = await fetch(route);
    return await response.text();
-}    
+}
 
 document.querySelectorAll('img').forEach(async e => {
-if (e.src.endsWith('.svg')) {
-   e.parentElement.innerHTML = await load(e.src);
+   if (e.src.endsWith('.svg')) {
+      e.parentElement.innerHTML = await load(e.src);
    }
 });
 
@@ -49,11 +49,11 @@ document.querySelectorAll('[data-target="actualsource"]').forEach(e => {
 });
 
 addLongPress(document.getElementById('up'), () => {
-window.tv?.clickButton('VOLUMEUP');
+   window.tv?.clickButton('VOLUMEUP');
 });
 
 addLongPress(document.getElementById('down'), () => {
-window.tv?.clickButton('VOLUMEDOWN');
+   window.tv?.clickButton('VOLUMEDOWN');
 });
 
 function showBroadcast(broadcast) {
@@ -75,7 +75,7 @@ function sanitize(text) {
    if (!text) {
       return '';
    }
-   return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('\n', '<br/>'). replaceAll(/\[[^\[]*\]/g, '');
+   return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('\n', '<br/>').replaceAll(/\[[^\[]*\]/g, '');
 }
 
 function getChannel(name) {
@@ -95,9 +95,9 @@ function buildChannelList(channels) {
    channels.forEach(channel => {
       var name = channel.name;
       var id = channel.id || name.toLowerCase().replace(/[ \.\-_]/g, '')
-      var channel = { 
+      var channel = {
          name: name,
-         index: index++, 
+         index: index++,
          id: id,
          icon: channel.icon || `https://raw.githubusercontent.com/MarhyCZ/picons/master/640/${id}.png`
       }
@@ -132,8 +132,8 @@ function extractEpgData(tvhEpgEntry) {
    return {
       channel: tvhEpgEntry.channelName,
       eventId: tvhEpgEntry.eventId,
-      start: new Date(tvhEpgEntry.start*1000),
-      stop: new Date(tvhEpgEntry.stop*1000),
+      start: new Date(tvhEpgEntry.start * 1000),
+      stop: new Date(tvhEpgEntry.stop * 1000),
       title: tvhEpgEntry.title,
       description: tvhEpgEntry.description,
       nextEventId: tvhEpgEntry.nextEventId
@@ -148,7 +148,7 @@ function formatTime(date) {
 }
 
 function nvl(instance, ifNull = '') {
-   return instance ?  instance : ifNull;
+   return instance ? instance : ifNull;
 }
 
 function updateChannelEpg(channel, epgEntry) {
@@ -162,7 +162,7 @@ function updateChannelEpg(channel, epgEntry) {
       }
       if (epgEntry.start.getTime() <= now && now < epgEntry.stop.getTime()) {
          channel.element.querySelector('.epg-title').innerHTML = `${formatTime(epgEntry?.start)} - ${formatTime(epgEntry?.stop)} ${sanitize(epgEntry?.title)}`;
-         channel.element.querySelector('.epg-desc' ).innerHTML = `${sanitize(epgEntry?.description)}`;
+         channel.element.querySelector('.epg-desc').innerHTML = `${sanitize(epgEntry?.description)}`;
       }
    }
 }
@@ -201,7 +201,7 @@ function loadCachedEpg() {
 async function getEpgByEventId(eventId) {
    var epg = extractEpgData(await tvheadend.getEpgEvent(eventId));
    var channel = getChannel(epg.channel);
-   if (epg.start.getTime() <= Date.now() + 4*60*60*1000) {
+   if (epg.start.getTime() <= Date.now() + 4 * 60 * 60 * 1000) {
       // update cache (asynchronously) when it does not include entries later than 4h from now
       loadEpg();
    }
@@ -264,7 +264,7 @@ function connect_to_tv() {
                return;
             } catch (e) {
                if (attempt < maxRetries) {
-                  console.warn(`TV connection attempt ${attempt} failed, retrying in ${delay/1000}s...`);
+                  console.warn(`TV connection attempt ${attempt} failed, retrying in ${delay / 1000}s...`);
                   await new Promise(r => setTimeout(r, delay));
                   delay *= 2;
                } else {
@@ -279,48 +279,48 @@ function connect_to_tv() {
 }
 
 async function handleKodiEvent(event) {
-      switch (event.method) {
-         case 'Player.OnPlay':
-         case 'Player.OnResume':
-            document.getElementById('stop').style.display = '';
-            var d = await kodi.getPlayerInfos();
-            if (event?.params?.data?.item?.channeltype) {
+   switch (event.method) {
+      case 'Player.OnPlay':
+      case 'Player.OnResume':
+         document.getElementById('stop').style.display = '';
+         var d = await kodi.getPlayerInfos();
+         if (event?.params?.data?.item?.channeltype) {
             document.getElementById('kodi').querySelector('.epg-title').innerHTML = sanitize(d.title);
          } else {
-               // display duration without seconds
-               document.getElementById('kodi').querySelector('.epg-title').innerHTML = `${d.finishtime} (${d.duration.substring(0, d.duration.length - 3)}) ${sanitize(d.title)}`;
-               document.getElementById('pause').style.display = '';
-            }
-            break;
-         case 'Player.OnPause':
-            if (event.params.data.item?.channeltype != 'tv') {
-               document.getElementById('play').style.display = 'none';
-               document.getElementById('pause').style.display = '';
-            }
-            break;
-         case 'Player.OnStop':
-            document.getElementById('kodi').querySelector('.epg-title').innerHTML = '';
-            document.getElementById('stop').style.display = 'none';
-            document.getElementById('pause').style.display = 'none';
+            // display duration without seconds
+            document.getElementById('kodi').querySelector('.epg-title').innerHTML = `${d.finishtime} (${d.duration.substring(0, d.duration.length - 3)}) ${sanitize(d.title)}`;
+            document.getElementById('pause').style.display = '';
+         }
+         break;
+      case 'Player.OnPause':
+         if (event.params.data.item?.channeltype != 'tv') {
             document.getElementById('play').style.display = 'none';
-            break;
-         case 'Input.OnInputRequested':
-            document.getElementById('kodi-textinput').showModal();
-            break;
-         case 'Input.OnInputFinished':
-            document.getElementById('kodi-textinput').close();
-            break;
-         default:
-            console.debug('not handled kodi event', event);
-      }
+            document.getElementById('pause').style.display = '';
+         }
+         break;
+      case 'Player.OnStop':
+         document.getElementById('kodi').querySelector('.epg-title').innerHTML = '';
+         document.getElementById('stop').style.display = 'none';
+         document.getElementById('pause').style.display = 'none';
+         document.getElementById('play').style.display = 'none';
+         break;
+      case 'Input.OnInputRequested':
+         document.getElementById('kodi-textinput').showModal();
+         break;
+      case 'Input.OnInputFinished':
+         document.getElementById('kodi-textinput').close();
+         break;
+      default:
+         console.debug('not handled kodi event', event);
+   }
 }
 
 async function updateKodiState() {
    var playerInfo = await kodi.getPlayerInfos();
    if (playerInfo) {
-      handleKodiEvent({method:"Player.OnResume"});
+      handleKodiEvent({ method: "Player.OnResume" });
    } else {
-   handleKodiEvent({method:"Player.OnStop"});
+      handleKodiEvent({ method: "Player.OnStop" });
    }
 }
 
@@ -383,7 +383,7 @@ async function init() {
       } else {
          window.SWITCH_TV_ON = true;
       }
-   }); 
+   });
    connect_to_tv();
    document.getElementById('kodi-input-send').addEventListener('click', async e => {
       var text = document.getElementById('kodi-input').value;
