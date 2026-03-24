@@ -21,7 +21,7 @@ class ProxyWebSocket {
 
   constructor(target) {
      this.proxy = document.createElement('iframe');
-     this.proxy.setAttribute('src', 'data:text/html;base64,' + btoa(`<h1>${target}</h1><script>window.onerror=err=>alert(err.toString());${proxyPayload.toString()};\nproxyPayload(${JSON.stringify(target)});</script>`));
+     this.proxy.setAttribute('src', 'data:text/html;base64,' + btoa(`<!DOCTYPE html><h1>${target}</h1><script>window.onerror=err=>alert(err.toString());${proxyPayload.toString()};\nproxyPayload(${JSON.stringify(target)});</script>`));
      window.addEventListener("message", (event) => {
         if (event.source !== this.proxy.contentWindow) {
            return;

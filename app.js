@@ -48,12 +48,16 @@ document.querySelectorAll('[data-target="actualsource"]').forEach(e => {
    });
 });
 
-addLongPress(document.getElementById('up'), () => {
+addLongPress(document.getElementById('up'), async () => {
    window.tv?.clickButton('VOLUMEUP');
+   var volume = await tv.getVolume();
+   document.getElementById('volume-slider').value = volume.volume;
 });
 
-addLongPress(document.getElementById('down'), () => {
+addLongPress(document.getElementById('down'), async () => {
    window.tv?.clickButton('VOLUMEDOWN');
+   var volume = await tv.getVolume();
+   document.getElementById('volume-slider').value = volume.volume;
 });
 
 function showBroadcast(broadcast) {
@@ -116,12 +120,14 @@ function buildChannelList(channels) {
       container.append(channel.element);
       document.getElementById('epg-' + channel.id).addEventListener('click', async (e) => {
          if (e.target.textContent) {
-            if (getChannel(name).epg[0].stop.getTime() < Date.now()) {
+            var channelConfig = getChannel(name);
+            if (channelConfig.epg[0].stop.getTime() < Date.now()) {
+               channelConfig.epg = [];
                await loadEpg();
             }
             var dialog = document.getElementById('epgdetail');
             dialog.dataset.channel = name;
-            showBroadcast(getChannel(name).epg[0]);
+            showBroadcast(channelConfig.epg[0]);
             dialog.showModal();
          }
       });
@@ -241,7 +247,7 @@ function onTvConnected(tv) {
       document.getElementById('volume-slider').value = volume.volume;
    })();
    document.getElementById('volume-slider').addEventListener('input', async (event) => {
-      await tv.setVolume(event.srcElement.valueAsNumber);
+      await tv.setVolume(event.target.valueAsNumber);
    });
    (async () => await initActions(tv))();
    document.getElementById('power').children[0].setAttribute("fill", "#39AF35");
@@ -371,7 +377,7 @@ async function init() {
    const elementKodi = document.getElementById('kodi');
    // elementKodi.querySelector('.channel-icon').src = '';
    elementKodi.querySelector('.channel-icon').addEventListener('click', async () => {
-      if (tv && tv.connected) {
+      if (tv?.connected) {
          await tv.switchInput('HDMI_1');
       }
    });
