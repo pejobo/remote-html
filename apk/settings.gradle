@@ -1,0 +1,40 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "TVRemote"
+include ':app'
+
+// --- Precondition checks (fail fast with actionable messages) ---
+def readme = file('README.md').absolutePath
+
+def androidHome = System.getenv('ANDROID_HOME')
+if (!androidHome) {
+    def localProps = new Properties()
+    def lp = file('local.properties')
+    if (lp.exists()) lp.withInputStream { localProps.load(it) }
+    androidHome = localProps.getProperty('sdk.dir')
+}
+if (!androidHome) {
+    throw new GradleException(
+        "ANDROID_HOME is not set and local.properties has no sdk.dir.\n" +
+        "See setup instructions: ${readme}"
+    )
+}
+if (!file(androidHome).exists()) {
+    throw new GradleException(
+        "Android SDK not found at: ${androidHome}\n" +
+        "See setup instructions: ${readme}"
+    )
+}

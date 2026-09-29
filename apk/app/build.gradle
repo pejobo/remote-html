@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.remote.tv'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.remote.tv"
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs = ['src/main/assets']
+        }
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+// Sync web assets from the parent project before every build.
+// wsproxy.js is excluded — the local version (direct WebSocket) takes precedence.
+tasks.register('syncWebAssets', Copy) {
+    from(new File(projectDir, '../../')) {
+        include '*.html', '*.css', '*.js', '*.svg', '*.png', '*.json'
+        exclude 'wsproxy.js'
+    }
+    into 'src/main/assets'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+preBuild.dependsOn syncWebAssets
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+}
