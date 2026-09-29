@@ -60,6 +60,18 @@ addLongPress(document.getElementById('down'), async () => {
    document.getElementById('volume-slider').value = volume.volume;
 });
 
+window.volumeUp = async () => {
+   window.tv?.clickButton('VOLUMEUP');
+   var volume = await tv.getVolume();
+   document.getElementById('volume-slider').value = volume.volume;
+};
+
+window.volumeDown = async () => {
+   window.tv?.clickButton('VOLUMEDOWN');
+   var volume = await tv.getVolume();
+   document.getElementById('volume-slider').value = volume.volume;
+};
+
 function showBroadcast(broadcast) {
    var dialog = document.getElementById('epgdetail');
    var channel = getChannel(broadcast.channel)

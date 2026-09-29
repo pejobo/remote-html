@@ -2,6 +2,7 @@ package com.remote.tv
 
 import android.content.res.AssetManager
 import android.os.Bundle
+import android.view.KeyEvent
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -56,6 +57,20 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         server.close()
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                webView.evaluateJavascript("window.volumeUp()", null)
+                true
+            }
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                webView.evaluateJavascript("window.volumeDown()", null)
+                true
+            }
+            else -> super.onKeyDown(keyCode, event)
+        }
     }
 
     @Deprecated("Deprecated in Java")
