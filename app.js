@@ -85,6 +85,10 @@ function showBroadcast(broadcast) {
       </div>`
       .trim().replaceAll(/ *\n *</g, '<');;
    dialog.dataset.eventId = broadcast.eventId;
+   requestAnimationFrame(() => {
+      dialog.scrollTop = 0;
+      dialog.firstElementChild.scrollTop = 0;
+   });
 }
 
 function sanitize(text) {
@@ -140,6 +144,7 @@ function buildChannelList(channels) {
             var dialog = document.getElementById('epgdetail');
             dialog.dataset.channel = name;
             showBroadcast(channelConfig.epg[0]);
+            document.body.style.overflow = 'hidden';
             dialog.showModal();
          }
       });
@@ -324,6 +329,7 @@ async function handleKodiEvent(event) {
          document.getElementById('play').style.display = 'none';
          break;
       case 'Input.OnInputRequested':
+         document.getElementById('kodi-input').value = event?.params?.data?.value ?? '';
          document.getElementById('kodi-textinput').showModal();
          break;
       case 'Input.OnInputFinished':
@@ -408,9 +414,16 @@ async function init() {
       var text = document.getElementById('kodi-input').value;
       await kodi.sendText(text);
    });
+   document.getElementById('kodi-input-cancel').addEventListener('click', async () => {
+      document.getElementById('kodi-textinput').close();
+      await kodi.sendKey('escape');
+   });
    var epgDialog = document.getElementById('epgdetail')
    epgDialog.addEventListener('click', (e) => {
       epgDialog.close();
+   });
+   epgDialog.addEventListener('close', () => {
+      document.body.style.overflow = '';
    });
    document.getElementById('nextEpg').addEventListener('click', async (e) => {
       e.stopPropagation();
