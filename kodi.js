@@ -68,6 +68,10 @@ class Kodi {
       await this.sendKey('backspace');
    }
 
+   async executeAddon(addonid, params) {
+      return await this.request({ jsonrpc: "2.0", method: "Addons.ExecuteAddon", params: { addonid, params }, id: this.genid() });
+   }
+
    async sendKey(name) {
       return await this.request({ jsonrpc: "2.0", method: "Input.ButtonEvent", params: { button: name, keymap: "KB" }, id: this.genid() });
    }

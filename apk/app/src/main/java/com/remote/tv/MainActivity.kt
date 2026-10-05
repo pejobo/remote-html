@@ -1,12 +1,16 @@
 package com.remote.tv
 
 import android.content.res.AssetManager
+import android.content.Intent
 import android.os.Bundle
 import android.view.KeyEvent
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import org.json.JSONObject
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.InetSocketAddress
@@ -15,8 +19,20 @@ import java.net.Socket
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        const val EXTRA_PLAY_URL = "play_url"
+        const val EXTRA_BACKGROUND = "background_after_play"
+
+        // running instance, so shares can be delivered without bringing the app to the front
+        @Volatile
+        var instance: MainActivity? = null
+    }
+
     private lateinit var webView: WebView
     private lateinit var server: LocalAssetServer
+    private var pageLoaded = false
+    private var pendingUrl: String? = null
+    private var backgroundAfterPlay = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,14 +46,63 @@ class MainActivity : AppCompatActivity() {
             useWideViewPort = true
             loadWithOverviewMode = true
         }
-        webView.webViewClient = WebViewClient()
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                pageLoaded = true
+                deliverPendingUrl()
+            }
+        }
         webView.webChromeClient = WebChromeClient()
+        webView.addJavascriptInterface(object {
+            @JavascriptInterface
+            fun playUrlDone() = runOnUiThread { onPlayUrlDone() }
+        }, "AndroidApp")
 
         server = LocalAssetServer(assets) { port ->
             runOnUiThread { webView.loadUrl("http://localhost:$port/index.html") }
         }
         server.isDaemon = true
         server.start()
+
+        instance = this
+        handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val url = intent?.getStringExtra(EXTRA_PLAY_URL) ?: return
+        intent.removeExtra(EXTRA_PLAY_URL)
+        // cold start by a share: stay in the background once kodi got the url
+        backgroundAfterPlay = intent.getBooleanExtra(EXTRA_BACKGROUND, false)
+        playUrl(url)
+    }
+
+    // called by ShareActivity, also while this activity is in the background
+    fun playUrl(url: String) {
+        pendingUrl = url
+        deliverPendingUrl()
+    }
+
+    private fun deliverPendingUrl() {
+        val url = pendingUrl ?: return
+        if (!pageLoaded) return
+        pendingUrl = null
+        webView.onResume()
+        webView.resumeTimers()
+        webView.evaluateJavascript("window.playUrl&&window.playUrl(${JSONObject.quote(url)})", null)
+    }
+
+    private fun onPlayUrlDone() {
+        if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) webView.onPause()
+        if (backgroundAfterPlay) {
+            backgroundAfterPlay = false
+            moveTaskToBack(true)
+        }
     }
 
     override fun onResume() {
@@ -56,6 +121,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        if (instance === this) instance = null
         server.close()
     }
 

@@ -72,6 +72,19 @@ window.volumeDown = async () => {
    document.getElementById('volume-slider').value = volume.volume;
 };
 
+window.playUrl = async (url) => {
+   try {
+      if (!kodi?.isConnected()) {
+         await connect_to_kodi();
+      }
+      await kodi.executeAddon('script.scripter', `action=play_url&url=${encodeURIComponent(url)}`);
+   } catch (error) {
+      console.warn('Failed to play url on kodi', error);
+   } finally {
+      window.AndroidApp?.playUrlDone();
+   }
+};
+
 function showBroadcast(broadcast) {
    var dialog = document.getElementById('epgdetail');
    var channel = getChannel(broadcast.channel)
