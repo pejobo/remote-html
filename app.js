@@ -456,6 +456,22 @@ async function init() {
          showBroadcast(broadcast);
       }
    });
+   var swipeStart = null;
+   epgDialog.addEventListener('touchstart', (e) => {
+      var t = e.changedTouches[0];
+      swipeStart = { x: t.clientX, y: t.clientY };
+   }, { passive: true });
+   epgDialog.addEventListener('touchend', (e) => {
+      if (!swipeStart) return;
+      var t = e.changedTouches[0];
+      var dx = t.clientX - swipeStart.x;
+      var dy = t.clientY - swipeStart.y;
+      swipeStart = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > 2 * Math.abs(dy)) {
+         e.preventDefault(); // suppress the click that would close the dialog
+         document.getElementById(dx < 0 ? 'nextEpg' : 'prevEpg').click();
+      }
+   });
    connect_to_kodi();
    loadEpg();
 };
