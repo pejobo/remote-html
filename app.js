@@ -146,6 +146,7 @@ function buildChannelList(channels) {
             showBroadcast(channelConfig.epg[0]);
             document.body.style.overflow = 'hidden';
             dialog.showModal();
+            history.pushState({ epgDetail: true }, '');
          }
       });
    });
@@ -424,6 +425,14 @@ async function init() {
    });
    epgDialog.addEventListener('close', () => {
       document.body.style.overflow = '';
+      if (history.state?.epgDetail) {
+         history.back();
+      }
+   });
+   window.addEventListener('popstate', () => {
+      if (epgDialog.open) {
+         epgDialog.close();
+      }
    });
    document.getElementById('nextEpg').addEventListener('click', async (e) => {
       e.stopPropagation();
