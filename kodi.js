@@ -63,9 +63,7 @@ class Kodi {
    }
 
    async switchOnTv() {
-      await this.request({ jsonrpc: "2.0", method: "Addons.ExecuteAddon", params: { addonid: "plugin.program.scripts", params: { action: "execute", id: "tv-on" } }, id: this.genid() });
-      // we fix this by sending an additional back command
-      await this.sendKey('backspace');
+      await this.executeAddon('script.scripter', { action: "execute&id=tv-on" });
    }
 
    async executeAddon(addonid, params) {
